@@ -6,6 +6,8 @@
 
 ## 🎮 How to Play
 
+Open [HEXGUESS](https://kenzoportela.github.io/hexguess/) in your favourite browser !
+
 The objective is simple: **guess the 6-digit hex code** of the target color shown on the screen.
 
 ### Feedback Logic
