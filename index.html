@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HEXGUESS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=JetBrains+Mono:wght@700&display=swap');
+        
+        body {
+            background-color: black;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .dot-grid {
+            background-image: radial-gradient(#27272a 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Modal transitions */
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.95);
+            backdrop-filter: blur(8px);
+            transition: opacity 0.3s ease;
+        }
+
+        .hidden-modal {
+            display: none !important;
+        }
+
+        input:focus {
+            outline: none;
+        }
+
+        .feedback-icon-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 2px;
+            color: white;
+        }
+
+        /* Punchier Green Accents (No Glow) */
+        .btn-vibrant-green {
+            background-color: #4ade80; 
+            transition: all 0.2s ease;
+        }
+        .btn-vibrant-green:hover {
+            background-color: #22c55e;
+        }
+
+        /* Custom scrollbar for lists */
+        #history-list::-webkit-scrollbar, #details-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        #history-list::-webkit-scrollbar-track, #details-list::-webkit-scrollbar-track {
+            background: #18181b;
+        }
+        #history-list::-webkit-scrollbar-thumb, #details-list::-webkit-scrollbar-thumb {
+            background: #3f3f46;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="dot-grid min-h-screen text-zinc-100 selection:bg-zinc-700">
+
+    <!-- Top Navbar -->
+    <nav class="bg-zinc-900/90 backdrop-blur-md border-b border-zinc-800 px-4 py-3 flex items-center justify-between sticky top-0 z-40 shadow-2xl">
+        <div class="flex items-center gap-4">
+            <h1 class="font-black tracking-tighter text-xl text-white">HEXGUESS</h1>
+            <button id="btn-random" class="flex items-center gap-2 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold rounded-lg transition-all active:scale-95 border border-zinc-700">
+                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> RANDOM
+            </button>
+            <!-- Difficulty Display -->
+            <span id="nav-difficulty" class="hidden sm:block px-2 py-0.5 rounded border border-zinc-700 bg-zinc-950 text-[10px] font-black uppercase tracking-widest text-zinc-500">
+                EASY
+            </span>
+        </div>
+        
+        <div class="flex items-center gap-2 text-zinc-400">
+            <button id="btn-history" class="p-2 hover:bg-zinc-800 rounded-lg transition-colors">
+                <i data-lucide="history" class="w-5 h-5"></i>
+            </button>
+            <button id="btn-settings" class="p-2 hover:bg-zinc-800 rounded-lg transition-colors">
+                <i data-lucide="settings" class="w-5 h-5"></i>
+            </button>
+            <button id="btn-help" class="p-2 hover:bg-zinc-800 rounded-lg transition-colors">
+                <i data-lucide="help-circle" class="w-5 h-5"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="max-w-xl mx-auto p-4 flex flex-col gap-6 items-center pt-8">
+        
+        <!-- Main Game Card -->
+        <section class="bg-zinc-900 rounded-3xl border border-zinc-800 shadow-2xl w-full p-6 md:p-10">
+            <div class="grid grid-cols-2 gap-6 mb-10">
+                <div class="flex flex-col items-center gap-3">
+                    <span class="font-bold text-zinc-500 text-[10px] uppercase tracking-[0.2em]">Target Color</span>
+                    <div id="target-swatch" class="w-full aspect-square rounded-2xl shadow-inner border border-white/5"></div>
+                </div>
+                <div class="flex flex-col items-center gap-3">
+                    <span class="font-bold text-zinc-500 text-[10px] uppercase tracking-[0.2em]">Your Guess</span>
+                    <div id="guess-swatch" class="w-full aspect-square rounded-2xl shadow-inner border border-white/5 transition-colors duration-300 bg-zinc-800 flex items-center justify-center text-zinc-700">
+                        <div class="text-4xl font-black">?</div>
+                    </div>
+                </div>
+            </div>
+
+            <form id="guess-form" class="flex flex-col items-center gap-4">
+                <div class="flex items-center gap-2">
+                    <div class="flex items-center bg-zinc-950 border-2 border-zinc-800 rounded-2xl overflow-hidden focus-within:border-zinc-500 transition-all shadow-inner">
+                        <span class="px-4 text-zinc-600 font-mono text-2xl">#</span>
+                        <input
+                            id="hex-input"
+                            type="text"
+                            placeholder="------"
+                            class="w-36 py-3.5 pr-4 text-2xl font-mono tracking-widest uppercase bg-transparent text-white"
+                            maxLength="6"
+                            autocomplete="off"
+                            autofocus
+                        />
+                    </div>
+                    <button
+                        type="submit"
+                        id="btn-submit"
+                        class="btn-vibrant-green text-black p-4 rounded-2xl transition-all shadow-lg active:scale-95 border border-white/10"
+                    >
+                        <i data-lucide="send" class="w-6 h-6 stroke-[2.5px]"></i>
+                    </button>
+                </div>
+
+                <div id="guess-counter" class="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 mt-2">
+                    Guesses Left: <span id="remaining-count" class="text-zinc-300">10</span>
+                </div>
+
+                <div id="message-container" class="hidden flex flex-col items-center gap-4 py-4">
+                    <p id="game-message" class="font-black text-white text-base tracking-tight text-center"></p>
+                    <button id="btn-new-game-inline" class="btn-vibrant-green text-black px-8 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 shadow-xl">
+                        New Game
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <!-- Guesses History -->
+        <section class="bg-zinc-900 rounded-3xl border border-zinc-800 shadow-2xl w-full p-6">
+            <h3 class="text-center font-bold text-zinc-500 mb-8 text-[10px] tracking-[0.3em] uppercase">Previous Guesses</h3>
+            <div id="guesses-list" class="flex flex-col gap-10">
+                <div class="text-center py-12 text-zinc-700 text-xs font-bold uppercase tracking-widest border-2 border-dashed border-zinc-800 rounded-2xl">
+                    Ready for your first guess
+                </div>
+            </div>
+        </section>
+
+        <button id="btn-restart" class="hidden mb-10 bg-white text-black px-10 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-zinc-200 transition-all flex items-center gap-3 shadow-2xl active:scale-95">
+            <i data-lucide="refresh-cw" class="w-5 h-5 stroke-[3px]"></i> TRY AGAIN
+        </button>
+    </main>
+
+    <!-- Settings Modal -->
+    <div id="modal-settings" class="hidden-modal fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4">
+        <div class="bg-zinc-900 border border-zinc-800 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden">
+            <div class="p-8 border-b border-zinc-800 flex justify-between items-center">
+                <div>
+                    <h3 class="text-2xl font-black text-white">Settings</h3>
+                    <p class="text-[10px] text-zinc-500 uppercase tracking-widest mt-1">Changes are saved automatically</p>
+                </div>
+                <button class="modal-close p-2 hover:bg-zinc-800 rounded-full text-zinc-500 hover:text-white transition-colors">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <div class="p-8 space-y-10">
+                <div class="space-y-4">
+                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Emoji Legend</h4>
+                    <div id="legend-container" class="grid grid-cols-1 gap-3 text-sm text-zinc-400">
+                        <!-- Legend content rendered dynamically -->
+                    </div>
+                </div>
+                <div class="space-y-5">
+                    <div class="flex items-baseline justify-between">
+                        <h4 class="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Difficulty</h4>
+                        <span id="lock-notice" class="hidden text-[8px] font-black text-red-500 uppercase tracking-tighter bg-red-500/10 px-1.5 py-0.5 rounded">Locked Mid-Game</span>
+                    </div>
+                    <div id="difficulty-options" class="space-y-4">
+                        <!-- Difficulty choices rendered here -->
+                    </div>
+                </div>
+            </div>
+            <div class="p-8 bg-black/40 border-t border-zinc-800">
+                <button class="modal-close w-full btn-vibrant-green text-black py-4 rounded-2xl font-black uppercase tracking-widest text-sm transition-all">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- History Modal -->
+    <div id="modal-history" class="hidden-modal fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4">
+        <div class="bg-zinc-900 border border-zinc-800 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
+            <div class="p-8 border-b border-zinc-800 flex justify-between items-center">
+                <div>
+                    <h3 class="text-2xl font-black text-white">Game History</h3>
+                    <p class="text-[10px] text-zinc-500 uppercase tracking-widest mt-1">Click an entry to see details</p>
+                </div>
+                <button class="modal-close p-2 hover:bg-zinc-800 rounded-full text-zinc-500 hover:text-white transition-colors">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <div id="history-list" class="p-8 space-y-4 overflow-y-auto flex-grow">
+                <!-- History items rendered here -->
+            </div>
+            <div class="p-8 bg-black/40 border-t border-zinc-800 flex gap-3">
+                <button id="btn-clear-history" class="bg-zinc-800 text-zinc-400 hover:bg-red-500/10 hover:text-red-500 px-4 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all">Clear</button>
+                <button class="modal-close flex-grow btn-vibrant-green text-black py-4 rounded-2xl font-black uppercase tracking-widest text-sm transition-all">Back to Game</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Details Modal -->
+    <div id="modal-details" class="hidden-modal fixed inset-0 modal-overlay z-[60] flex items-center justify-center p-4">
+        <div class="bg-zinc-900 border border-zinc-800 w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+            <div class="p-8 border-b border-zinc-800 flex justify-between items-center">
+                <div class="flex items-center gap-4">
+                    <div id="details-color-preview" class="w-12 h-12 rounded-xl border border-white/10"></div>
+                    <div>
+                        <h3 class="text-xl font-black text-white leading-tight">Game Details</h3>
+                        <p id="details-meta" class="text-[10px] text-zinc-500 uppercase tracking-widest mt-1">Difficulty • Date</p>
+                    </div>
+                </div>
+                <button id="btn-close-details" class="p-2 hover:bg-zinc-800 rounded-full text-zinc-500 hover:text-white transition-colors">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <div id="details-list" class="p-8 space-y-8 overflow-y-auto flex-grow bg-black/20">
+                <!-- Guesses details rendered here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div id="modal-help" class="hidden-modal fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4">
+        <div class="bg-zinc-900 border border-zinc-800 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl">
+            <div class="p-8 border-b border-zinc-800 flex justify-between items-center">
+                <h3 class="text-2xl font-black flex items-center gap-3 text-white">
+                    <i data-lucide="info" class="w-6 h-6 text-blue-500"></i> How to Play
+                </h3>
+                <button class="modal-close p-2 hover:bg-zinc-800 rounded-full text-zinc-500 hover:text-white transition-colors">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <div class="p-8 space-y-6 text-zinc-400 text-sm leading-relaxed">
+                <p>Guess the hidden hex code in <span id="help-max-tries" class="text-white font-bold underline decoration-green-400">10 tries</span>.</p>
+                <div class="space-y-3 bg-black/40 p-5 rounded-2xl border border-zinc-800">
+                    <div class="flex items-center gap-4">
+                        <div class="w-6 h-6 bg-green-500 rounded flex items-center justify-center text-white"><i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i></div>
+                        <span>Character is perfect</span>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="w-6 h-6 bg-red-400 rounded flex items-center justify-center text-white"><i data-lucide="chevron-up" class="w-4 h-4 text-white"></i></div>
+                        <span>Off by 1 or 2 steps (Easy/Hard)</span>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="w-6 h-6 bg-red-600 rounded flex items-center justify-center text-white"><i data-lucide="chevrons-up" class="w-4 h-4 text-white"></i></div>
+                        <span>Off by 3 or more (Easy)</span>
+                    </div>
+                </div>
+                <p class="italic text-[10px] text-zinc-600 uppercase tracking-widest font-bold">Hex order: 0 1 2 3 4 5 6 7 8 9 A B C D E F</p>
+            </div>
+            <div class="p-8">
+                <button class="modal-close w-full bg-zinc-800 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-zinc-700 transition-all">Got it!</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- State Management ---
+        const hexOrder = "0123456789ABCDEF";
+        const STORAGE_KEY = 'hexguess_v1_state';
+        const HISTORY_KEY = 'hexguess_v1_history';
+        let targetHex = "";
+        let guesses = [];
+        let gameOver = false;
+        let difficulty = "Easy";
+        let history = [];
+
+        const difficultyLimits = {
+            "Easy": 10,
+            "Hard": 5,
+            "Expert": 3
+        };
+
+        // --- Selectors ---
+        const hexInput = document.getElementById('hex-input');
+        const guessForm = document.getElementById('guess-form');
+        const guessesList = document.getElementById('guesses-list');
+        const targetSwatch = document.getElementById('target-swatch');
+        const guessSwatch = document.getElementById('guess-swatch');
+        const messageContainer = document.getElementById('message-container');
+        const gameMessage = document.getElementById('game-message');
+        const restartBtn = document.getElementById('btn-restart');
+        const newGameInlineBtn = document.getElementById('btn-new-game-inline');
+        const navDifficultyDisplay = document.getElementById('nav-difficulty');
+        const remainingCountDisplay = document.getElementById('remaining-count');
+        const helpMaxTries = document.getElementById('help-max-tries');
+        
+        // --- Modals ---
+        const modalHelp = document.getElementById('modal-help');
+        const modalSettings = document.getElementById('modal-settings');
+        const modalHistory = document.getElementById('modal-history');
+        const modalDetails = document.getElementById('modal-details');
+        const historyList = document.getElementById('history-list');
+        const detailsList = document.getElementById('details-list');
+        const difficultyContainer = document.getElementById('difficulty-options');
+        const legendContainer = document.getElementById('legend-container');
+        const lockNotice = document.getElementById('lock-notice');
+
+        // --- Storage Helpers ---
+        function saveToStorage() {
+            const state = {
+                targetHex,
+                guesses,
+                gameOver,
+                difficulty,
+                lastGuess: guesses.length > 0 ? guesses[guesses.length - 1].hex : null
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        }
+
+        function loadFromStorage() {
+            const savedState = localStorage.getItem(STORAGE_KEY);
+            if (savedState) {
+                try {
+                    const state = JSON.parse(savedState);
+                    targetHex = state.targetHex;
+                    guesses = state.guesses;
+                    gameOver = state.gameOver;
+                    difficulty = state.difficulty;
+                    
+                    navDifficultyDisplay.innerText = difficulty;
+                    targetSwatch.style.backgroundColor = `#${targetHex}`;
+                    
+                    if (state.lastGuess) {
+                        guessSwatch.classList.remove('bg-zinc-800');
+                        guessSwatch.style.backgroundColor = `#${state.lastGuess}`;
+                        guessSwatch.innerHTML = '';
+                    } else {
+                        guessSwatch.classList.add('bg-zinc-800');
+                        guessSwatch.innerHTML = '<div class="text-4xl font-black">?</div>';
+                    }
+
+                    renderGuesses();
+                    updateGuessCounter();
+                    
+                    if (gameOver) {
+                        hexInput.disabled = true;
+                        restartBtn.classList.remove('hidden');
+                        const lastGuess = guesses[guesses.length - 1]?.hex;
+                        const limit = difficultyLimits[difficulty];
+                        if (lastGuess === targetHex) {
+                            const score = Math.max(0, 100 - (guesses.length - 1) * 10);
+                            showMessage(`PERFECT MATCH! YOUR SCORE: ${score}%`);
+                        } else if (guesses.length >= limit) {
+                            showMessage(`GAME OVER! TARGET WAS #${targetHex}`);
+                        }
+                    }
+                } catch (e) { console.error(e); }
+            }
+
+            const savedHistory = localStorage.getItem(HISTORY_KEY);
+            if (savedHistory) {
+                try { history = JSON.parse(savedHistory); } catch (e) { console.error(e); }
+            }
+
+            return !!savedState;
+        }
+
+        function addToHistory(won) {
+            const gameResult = {
+                id: Date.now(),
+                target: targetHex,
+                difficulty: difficulty,
+                guesses: [...guesses], // Deep copy current guesses
+                numGuesses: guesses.length,
+                maxGuesses: difficultyLimits[difficulty],
+                won: won,
+                timestamp: new Date().toLocaleDateString()
+            };
+            history.unshift(gameResult);
+            localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+        }
+
+        // --- Logic ---
+
+        function updateGuessCounter() {
+            const limit = difficultyLimits[difficulty];
+            const remaining = Math.max(0, limit - guesses.length);
+            remainingCountDisplay.innerText = remaining;
+            helpMaxTries.innerText = `${limit} tries`;
+        }
+
+        function generateNewTarget() {
+            targetHex = Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0').toUpperCase();
+            guesses = [];
+            gameOver = false;
+            hexInput.value = "";
+            hexInput.disabled = false;
+            messageContainer.classList.add('hidden');
+            restartBtn.classList.add('hidden');
+            
+            targetSwatch.style.backgroundColor = `#${targetHex}`;
+            guessSwatch.style.backgroundColor = "";
+            guessSwatch.innerHTML = '<div class="text-4xl font-black">?</div>';
+            guessSwatch.classList.add('bg-zinc-800');
+
+            renderGuesses();
+            updateGuessCounter();
+            saveToStorage();
+            
+            setTimeout(() => hexInput.focus(), 10);
+        }
+
+        function getFeedback(guessChar, targetChar, gameDifficulty) {
+            const gIdx = hexOrder.indexOf(guessChar);
+            const tIdx = hexOrder.indexOf(targetChar);
+            const diff = tIdx - gIdx;
+            if (diff === 0) return 'correct';
+            if (gameDifficulty === 'Expert') return 'incorrect';
+            if (gameDifficulty === 'Hard') return diff > 0 ? 'low-simple' : 'high-simple';
+            if (diff > 0) return diff <= 2 ? 'low-small' : 'low-large';
+            return Math.abs(diff) <= 2 ? 'high-small' : 'high-large';
+        }
+
+        function checkGameStatus(lastGuessHex) {
+            const limit = difficultyLimits[difficulty];
+            let won = false;
+            
+            if (lastGuessHex === targetHex) {
+                gameOver = true;
+                won = true;
+                const score = Math.max(0, 100 - (guesses.length - 1) * 10);
+                showMessage(`PERFECT MATCH! YOUR SCORE: ${score}%`);
+            } else if (guesses.length >= limit) {
+                gameOver = true;
+                showMessage(`GAME OVER! TARGET WAS #${targetHex}`);
+            }
+
+            if (gameOver) {
+                hexInput.disabled = true;
+                restartBtn.classList.remove('hidden');
+                addToHistory(won);
+            } else {
+                hexInput.focus();
+            }
+            saveToStorage();
+        }
+
+        function submitGuess(e) {
+            if (e) e.preventDefault();
+            const val = hexInput.value.toUpperCase();
+            if (val.length !== 6 || gameOver) return;
+            guesses.push({ hex: val });
+            hexInput.value = "";
+            guessSwatch.classList.remove('bg-zinc-800');
+            guessSwatch.style.backgroundColor = `#${val}`;
+            guessSwatch.innerHTML = '';
+            renderGuesses();
+            updateGuessCounter();
+            checkGameStatus(val);
+            lucide.createIcons();
+        }
+
+        function showMessage(text) {
+            gameMessage.innerText = text;
+            messageContainer.classList.remove('hidden');
+        }
+
+        function getGuessHTML(guess, target, diff) {
+            const charFeedback = guess.hex.split('').map((char, i) => ({ val: char, feedback: getFeedback(char, target[i], diff) }));
+            const charBlocks = charFeedback.map((c) => {
+                let icon = '', colorClass = '';
+                switch(c.feedback) {
+                    case 'correct': icon = 'check-circle-2'; colorClass = 'bg-green-500'; break;
+                    case 'low-small': icon = 'chevron-up'; colorClass = 'bg-red-400'; break;
+                    case 'low-large': icon = 'chevrons-up'; colorClass = 'bg-red-600'; break;
+                    case 'high-small': icon = 'chevron-down'; colorClass = 'bg-red-400'; break;
+                    case 'high-large': icon = 'chevrons-down'; colorClass = 'bg-red-600'; break;
+                    case 'low-simple': icon = 'chevron-up'; colorClass = 'bg-red-500'; break;
+                    case 'high-simple': icon = 'chevron-down'; colorClass = 'bg-red-500'; break;
+                    case 'incorrect': icon = 'x'; colorClass = 'bg-red-600'; break;
+                }
+                return `<div class="flex flex-col items-center gap-1.5 group"><div class="w-8 h-10 sm:w-10 sm:h-14 rounded-lg border-2 flex items-center justify-center text-lg sm:text-xl font-black bg-zinc-950 transition-transform group-hover:-translate-y-1" style="border-color: #${guess.hex}; color: white;">${c.val}</div><div class="w-4 h-4 shadow-md feedback-icon-container ${colorClass}"><i data-lucide="${icon}" class="w-3 h-3 stroke-[4px]"></i></div></div>`;
+            }).join('');
+            return `<div class="flex flex-row items-center justify-center gap-3 sm:gap-6"><div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl border-2 border-white/10 shadow-lg flex-shrink-0" style="background-color: #${guess.hex}"></div><div class="flex flex-row gap-1.5 sm:gap-2">${charBlocks}</div></div>`;
+        }
+
+        function renderGuesses() {
+            if (guesses.length === 0) {
+                guessesList.innerHTML = `<div class="text-center py-12 text-zinc-700 text-xs font-bold uppercase tracking-widest border-2 border-dashed border-zinc-800 rounded-2xl">Ready for your first guess</div>`;
+                return;
+            }
+            const html = guesses.slice().reverse().map((guess) => getGuessHTML(guess, targetHex, difficulty)).join('<div class="h-4"></div>');
+            guessesList.innerHTML = html;
+            lucide.createIcons();
+        }
+
+        function showGameDetails(gameId) {
+            const game = history.find(g => g.id === gameId);
+            if (!game) return;
+
+            document.getElementById('details-color-preview').style.backgroundColor = `#${game.target}`;
+            document.getElementById('details-meta').innerText = `${game.difficulty} • ${game.timestamp} • #${game.target}`;
+            
+            const html = game.guesses.map(g => getGuessHTML(g, game.target, game.difficulty)).join('<div class="h-4"></div>');
+            detailsList.innerHTML = html;
+            
+            modalDetails.classList.remove('hidden-modal');
+            lucide.createIcons();
+        }
+
+        function renderHistory() {
+            if (history.length === 0) {
+                historyList.innerHTML = `<div class="text-center py-20 text-zinc-700 text-xs font-black uppercase tracking-widest italic">No history yet... win some games!</div>`;
+                return;
+            }
+            historyList.innerHTML = history.map(item => `
+                <div onclick="showGameDetails(${item.id})" class="bg-zinc-950/50 p-4 rounded-2xl border border-zinc-800 flex items-center justify-between cursor-pointer hover:bg-zinc-800 transition-all hover:scale-[1.02] active:scale-95 group">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-lg border border-white/10" style="background-color: #${item.target}"></div>
+                        <div>
+                            <div class="text-[10px] font-black uppercase tracking-widest text-zinc-500 group-hover:text-zinc-300 transition-colors">${item.timestamp}</div>
+                            <div class="font-mono text-sm text-white group-hover:text-[#4ade80] transition-colors">#${item.target}</div>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-[10px] font-black uppercase tracking-widest ${item.won ? 'text-[#4ade80]' : 'text-red-500'}">${item.won ? 'WON' : 'LOST'}</div>
+                        <div class="text-[9px] text-zinc-600 font-bold uppercase tracking-tighter">${item.difficulty} • ${item.numGuesses}/${item.maxGuesses}</div>
+                    </div>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function renderLegend() {
+            let legendHtml = '';
+            const correctItem = `<div class="flex items-center gap-4"><div class="w-6 h-6 bg-green-500 rounded flex items-center justify-center"><i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-white"></i></div> Correct</div>`;
+            const lowSmallItem = `<div class="flex items-center gap-4"><div class="w-6 h-6 bg-red-400 rounded flex items-center justify-center"><i data-lucide="chevron-up" class="w-4 h-4 text-white"></i></div> Off by 1 or 2 steps</div>`;
+            const lowLargeItem = `<div class="flex items-center gap-4"><div class="w-6 h-6 bg-red-600 rounded flex items-center justify-center"><i data-lucide="chevrons-up" class="w-4 h-4 text-white"></i></div> Off by 3 or more steps</div>`;
+            const directionalItem = `<div class="flex items-center gap-4"><div class="w-6 h-6 bg-red-500 rounded flex items-center justify-center"><i data-lucide="chevron-up" class="w-4 h-4 text-white"></i></div> Higher or lower value</div>`;
+            const expertItem = `<div class="flex items-center gap-4"><div class="w-6 h-6 bg-zinc-700 rounded flex items-center justify-center"><i data-lucide="x" class="w-3.5 h-3.5 text-white"></i></div> Incorrect (No hints)</div>`;
+            if (difficulty === 'Easy') legendHtml = correctItem + lowSmallItem + lowLargeItem;
+            else if (difficulty === 'Hard') legendHtml = correctItem + directionalItem;
+            else legendHtml = correctItem + expertItem;
+            legendContainer.innerHTML = legendHtml;
+            lucide.createIcons();
+        }
+
+        function renderDifficulty() {
+            const options = ['Easy', 'Hard', 'Expert'];
+            const isLocked = guesses.length > 0;
+            if (isLocked) lockNotice.classList.remove('hidden');
+            else lockNotice.classList.add('hidden');
+            difficultyContainer.innerHTML = options.map(d => `
+                <label class="flex items-center gap-4 ${isLocked ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'} group">
+                    <div class="w-6 h-6 rounded-full border-2 flex items-center justify-center relative transition-all ${difficulty === d ? 'border-[#4ade80] bg-[#4ade80]/10' : (isLocked ? 'border-zinc-900' : 'border-zinc-800')}">
+                        ${difficulty === d ? `<div class="w-2.5 h-2.5 bg-[#4ade80] rounded-full absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"></div>` : ''}
+                    </div>
+                    <input type="radio" class="hidden" name="diff" value="${d}" ${difficulty === d ? 'checked' : ''} ${isLocked ? 'disabled' : ''}>
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold tracking-tight ${difficulty === d ? 'text-white' : (isLocked ? 'text-zinc-700' : 'text-zinc-500 group-hover:text-zinc-300')}">${d}</span>
+                        <span class="text-[8px] uppercase tracking-tighter ${isLocked ? 'text-zinc-800' : 'text-zinc-600'}">${difficultyLimits[d]} Guesses</span>
+                    </div>
+                </label>
+            `).join('');
+            difficultyContainer.querySelectorAll('input').forEach(input => {
+                input.onchange = (e) => {
+                    difficulty = e.target.value;
+                    navDifficultyDisplay.innerText = difficulty;
+                    renderDifficulty();
+                    renderLegend();
+                    updateGuessCounter();
+                    renderGuesses();
+                    saveToStorage();
+                    if (guesses.length > 0 && !gameOver) checkGameStatus(guesses[guesses.length - 1].hex);
+                };
+            });
+        }
+
+        // --- Event Listeners ---
+        document.getElementById('btn-random').onclick = generateNewTarget;
+        restartBtn.onclick = generateNewTarget;
+        newGameInlineBtn.onclick = generateNewTarget;
+        guessForm.onsubmit = submitGuess;
+        hexInput.oninput = (e) => e.target.value = e.target.value.toUpperCase().replace(/[^0-9A-F]/g, '');
+        
+        document.getElementById('btn-help').onclick = () => modalHelp.classList.remove('hidden-modal');
+        document.getElementById('btn-settings').onclick = () => { renderDifficulty(); renderLegend(); modalSettings.classList.remove('hidden-modal'); };
+        document.getElementById('btn-history').onclick = () => { renderHistory(); modalHistory.classList.remove('hidden-modal'); };
+        document.getElementById('btn-clear-history').onclick = () => { if(confirm("Are you sure you want to clear your entire game history?")) { history = []; localStorage.removeItem(HISTORY_KEY); renderHistory(); } };
+        document.getElementById('btn-close-details').onclick = () => modalDetails.classList.add('hidden-modal');
+
+        document.querySelectorAll('.modal-close').forEach(btn => {
+            btn.onclick = () => {
+                modalHelp.classList.add('hidden-modal');
+                modalSettings.classList.add('hidden-modal');
+                modalHistory.classList.add('hidden-modal');
+                hexInput.focus();
+            }
+        });
+
+        window.onload = () => {
+            const hasSavedState = loadFromStorage();
+            if (!hasSavedState) generateNewTarget();
+            navDifficultyDisplay.innerText = difficulty;
+            lucide.createIcons();
+        };
+    </script>
+</body>
+</html>
