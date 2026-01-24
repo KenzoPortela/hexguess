@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#18181b"/>
+  <path d="M256 64 L448 160 L448 352 L256 448 L64 352 L64 160 Z" fill="#4ade80"/>
+  <text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" font-family="monospace" font-weight="bold" font-size="200" fill="#18181b">HG</text>
+</svg>
