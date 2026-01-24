@@ -67,7 +67,7 @@ It can be accessed in any web browser [here](https://kenzoportela.github.io/hexg
 
 ### Run locally
 
-Download and open [`index.html`](https://github.com/KenzoPortela/hexguess/blob/main/index.html) in any modern web browser.
+Download `hexguess.html` from the [Releases](https://github.com/KenzoPortela/hexguess/releases/) section in GitHub, and open it in any modern web browser.
 To modify it, you can basically just open it with any notepad app (Windows' default one works), but it better to use a code editor like [Visual Studio Code](https://code.visualstudio.com/).
 
 ---
