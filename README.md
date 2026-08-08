@@ -6,7 +6,7 @@
 
 ## 🎮 How to Play
 
-Open [HEXGUESS](https://kenzoportela.github.io/hexguess/) in your favourite browser !
+Open [HEXGUESS](https://hexguess.kenzoportela.com/) in your favourite browser !
 
 The objective is simple: **guess the 6-digit hex code** of the target color shown on the screen.
 
@@ -63,7 +63,7 @@ For every character you guess, the game provides specific clues based on your se
 ## 📦 Installation
 
 HEXGUESS is a **web application** — no build process required.
-It can be accessed in any web browser [here](https://kenzoportela.github.io/hexguess/), or you can run it locally, and make any change you want to the game !
+It can be accessed in any web browser [here](https://hexguess.kenzoportela.com/), or you can run it locally, and make any change you want to the game !
 
 ### Run locally
 
